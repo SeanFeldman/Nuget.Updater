@@ -43,8 +43,9 @@
                 var response = await httpClient.GetAsync(packageBaseAddressUri, token).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                Console.WriteLine(response.Content.Headers.ContentDisposition?.FileName);
-                var path = Path.Combine(destinationPath, $"{packageId}.{version}.nupkg");
+                var fileName = response.Content.Headers.GetValues("Content-Disposition").FirstOrDefault().Split('=')[1];
+
+                var path = Path.Combine(destinationPath, fileName);
                 using (var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     await response.Content.CopyToAsync(fileStream).ConfigureAwait(false);
