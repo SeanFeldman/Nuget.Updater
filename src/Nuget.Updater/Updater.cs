@@ -1,7 +1,6 @@
-﻿namespace Nuget.Updater
+﻿namespace Nuget.Updater.Models
 {
     using System;
-    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Threading;
@@ -13,22 +12,47 @@
     public class Updater
     {
         Uri nugetV3Uri = new Uri("https://www.myget.org/F/messagehandler-dist/api/v3/index.json");
+        Feed feed;
+
 
         public async Task<SemanticVersion> GetLatestVersion(string packageId, bool includePreRelease = false, CancellationToken token = default(CancellationToken))
         {
             using (var httpClient = new HttpClient())
             {
-                var feed = await Get<Feed>(nugetV3Uri, httpClient, token);
+                feed = await GetJson<Feed>(nugetV3Uri, httpClient, token);
                 var searchQueryService = feed.Resources.FirstOrDefault(x => x.Type == "SearchQueryService");
 
                 var searchPackageUri = new Uri($"{searchQueryService.Url}/?q=packageid:{packageId}&prerelease={includePreRelease}");
-                var searchResult = await Get<SearchResult>(searchPackageUri, httpClient, token);
+                var searchResult = await GetJson<SearchResult>(searchPackageUri, httpClient, token);
                 var searchResultPackage = searchResult.Data.FirstOrDefault();
                 return new SemanticVersion(searchResultPackage.Version);
             }
         }
 
-        async Task<T> Get<T>(Uri uri, HttpClient httpClient, CancellationToken token)
+        public async Task Download(string packageId, SemanticVersion version, string destinationPath, CancellationToken token = default(CancellationToken))
+        {
+            using (var httpClient = new HttpClient())
+            {
+                if (feed == null)
+                {
+                    feed = await GetJson<Feed>(nugetV3Uri, httpClient, token);
+                }
+                var packageBaseAddress = feed.Resources.FirstOrDefault(x => x.Type.StartsWith("PackageBaseAddress"));
+                var packageBaseAddressUri = new Uri($"{packageBaseAddress.Url}/{packageId.ToLower()}/{version}/{packageId.ToLower()}.{version}.nupkg");
+
+                var response = await httpClient.GetAsync(packageBaseAddressUri, token).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+
+                Console.WriteLine(response.Content.Headers.ContentDisposition?.FileName);
+                var path = Path.Combine(destinationPath, $"{packageId}.{version}.nupkg");
+                using (var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    await response.Content.CopyToAsync(fileStream).ConfigureAwait(false);
+                }
+            }
+        }
+
+        async Task<T> GetJson<T>(Uri uri, HttpClient httpClient, CancellationToken token)
         {
             var response = await httpClient.GetAsync(uri, token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
@@ -42,40 +66,5 @@
                 }
             }
         }
-    }
-
-    public class Feed
-    {
-        public string Version { get; set; }
-        [JsonProperty("resources")]
-        public List<Resource> Resources { get; set; }
-    }
-
-    public class Resource
-    {
-        [JsonProperty("@id")]
-        public string Url { get; set; }
-
-        [JsonProperty("@type")]
-        public string Type { get; set; }
-
-        public string Comment { get; set; }
-    }
-
-    public class SearchResult
-    {
-        public string Index { get; set; }
-        public DateTime LastReopen { get; set; }
-        [JsonProperty("data")]
-        public List<SearchResultPackage> Data { get; set; }
-    }
-
-    public class SearchResultPackage
-    {
-        public string Id { get; set; }
-        public string Description { get; set; }
-        public string Title { get; set; }
-        public string Summary { get; set; }
-        public string Version { get; set; }
     }
 }
