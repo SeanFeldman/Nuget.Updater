@@ -10,7 +10,7 @@
     [TestFixture]
     public class When_checking_for_latest_version
     {
-        [Test]
+        [Test, Explicit("Latest version can change")]
         public async Task Should_report_the_latest_version()
         {
             var latestVersion = await new Updater().GetLatestVersion("Phoenix");
@@ -25,7 +25,7 @@
             var latestVersion = await updater.GetLatestVersion(packageId);
             var destinationPath = Path.GetTempPath();
             await updater.Download(packageId, latestVersion, destinationPath, CancellationToken.None);
-            Assert.IsTrue(File.Exists(Path.Combine(Path.GetTempPath(), "Phoenix.0.0.7.nupkg")));
+            Assert.IsTrue(File.Exists(Path.Combine(destinationPath, $"Phoenix.{latestVersion}.nupkg")));
         }
     }
 }
