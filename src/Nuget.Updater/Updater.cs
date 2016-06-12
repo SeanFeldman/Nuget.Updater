@@ -11,15 +11,23 @@
 
     public class Updater
     {
-        Uri nugetV3Uri = new Uri("https://www.myget.org/F/messagehandler-dist/api/v3/index.json");
+        readonly Uri nugetV3FeedUri;
         Feed feed;
 
+        public Updater(Uri nugetV3FeedUri = null)
+        {
+            if (nugetV3FeedUri == null)
+            {
+                nugetV3FeedUri = new Uri("https://www.myget.org/F/messagehandler-dist/api/v3/index.json");
+            }
+            this.nugetV3FeedUri = nugetV3FeedUri;
+        }
 
         public async Task<SemanticVersion> GetLatestVersion(string packageId, bool includePreRelease = false, CancellationToken token = default(CancellationToken))
         {
             using (var httpClient = new HttpClient())
             {
-                feed = await GetJson<Feed>(nugetV3Uri, httpClient, token);
+                feed = await GetJson<Feed>(nugetV3FeedUri, httpClient, token);
                 var searchQueryService = feed.Resources.FirstOrDefault(x => x.Type == "SearchQueryService");
 
                 var searchPackageUri = new Uri($"{searchQueryService.Url}/?q=packageid:{packageId}&prerelease={includePreRelease}");
@@ -35,7 +43,7 @@
             {
                 if (feed == null)
                 {
-                    feed = await GetJson<Feed>(nugetV3Uri, httpClient, token);
+                    feed = await GetJson<Feed>(nugetV3FeedUri, httpClient, token);
                 }
                 var packageBaseAddress = feed.Resources.FirstOrDefault(x => x.Type.StartsWith("PackageBaseAddress"));
                 var packageBaseAddressUri = new Uri($"{packageBaseAddress.Url}/{packageId.ToLower()}/{version}/{packageId.ToLower()}.{version}.nupkg");
