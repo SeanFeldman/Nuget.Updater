@@ -23,7 +23,7 @@
             this.nugetV3FeedUri = nugetV3FeedUri;
         }
 
-        public async Task<SemanticVersion> GetLatestVersion(string packageId, bool includePreRelease = false, CancellationToken token = default(CancellationToken))
+        public async Task<SemanticVersion> GetLatestVersionAsync(string packageId, bool includePreRelease = false, CancellationToken token = default(CancellationToken))
         {
             using (var httpClient = new HttpClient())
             {
@@ -37,7 +37,7 @@
             }
         }
 
-        public async Task Download(string packageId, SemanticVersion version, string destinationPath, CancellationToken token = default(CancellationToken))
+        public async Task DownloadAsync(string packageId, SemanticVersion version, string destinationPath, CancellationToken token = default(CancellationToken))
         {
             using (var httpClient = new HttpClient())
             {
